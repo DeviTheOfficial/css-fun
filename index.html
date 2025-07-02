@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cat Mosaic Blob Scatter</title>
+  <style>
+    /* reset & center */
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    /* container holds all blobs and applies the mask */
+    .container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+
+      /* use your sticker as a mask so child blobs only show inside the cat */
+      mask-image: url('Sticker-01.png');
+      mask-size: contain;
+      mask-position: center;
+      mask-repeat: no-repeat;
+
+      -webkit-mask-image: url('Sticker-01.png');
+      -webkit-mask-size: contain;
+      -webkit-mask-position: center;
+      -webkit-mask-repeat: no-repeat;
+    }
+
+    /* each little dot */
+    .blob {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e33;      /* a slightly deeper red */
+      transition: transform 0.8s ease-out;
+      will-change: transform;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="container"></div>
+
+  <script>
+    const container = document.getElementById('container');
+    const ROWS = 40, COLS = 40;  
+    const total = ROWS * COLS;
+    const blobs = [];
+
+    // after body/styles load:
+    window.addEventListener('load', () => {
+      const rect = container.getBoundingClientRect();
+      const stepX = rect.width  / COLS;
+      const stepY = rect.height / ROWS;
+
+      // create our grid of blobs
+      for (let i = 0; i < total; i++) {
+        const b = document.createElement('div');
+        b.className = 'blob';
+
+        const col = i % COLS;
+        const row = Math.floor(i / COLS);
+        const x = col * stepX + stepX/2;
+        const y = row * stepY + stepY/2;
+
+        // position & store original
+        b.style.transform = `translate(${x}px, ${y}px)`;
+        b.dataset.ox = x;
+        b.dataset.oy = y;
+
+        container.appendChild(b);
+        blobs.push(b);
+      }
+    });
+
+    // scattering parameters
+    const RADIUS    = 80;  // px around cursor
+    const MAX_PUSH  = 60;  // how far blobs fly
+
+    // on move—push each blob away if within RADIUS
+    container.addEventListener('pointermove', e => {
+      const rect = container.getBoundingClientRect();
+      blobs.forEach(b => {
+        const ox = +b.dataset.ox;
+        const oy = +b.dataset.oy;
+        const bx = rect.left + ox;
+        const by = rect.top  + oy;
+
+        const dx = bx - e.clientX;
+        const dy = by - e.clientY;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < RADIUS) {
+          const strength = (RADIUS - dist) / RADIUS;
+          const angle    = Math.atan2(dy, dx);
+          const px = Math.cos(angle) * MAX_PUSH * strength;
+          const py = Math.sin(angle) * MAX_PUSH * strength;
+
+          b.style.transform = `translate(${ox + px}px, ${oy + py}px)`;
+        } else {
+          // outside effect zone → snap home
+          b.style.transform = `translate(${ox}px, ${oy}px)`;
+        }
+      });
+    });
+
+    // on leave—all blobs return
+    container.addEventListener('pointerleave', () => {
+      blobs.forEach(b => {
+        b.style.transform = `translate(${b.dataset.ox}px, ${b.dataset.oy}px)`;
+      });
+    });
+  </script>
+</body>
+</html>
